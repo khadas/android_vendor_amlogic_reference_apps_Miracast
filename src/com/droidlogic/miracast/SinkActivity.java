@@ -61,6 +61,7 @@ import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.Toast;
 import android.media.AudioManager;
+import android.media.MediaPlayer;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -89,22 +90,8 @@ public class SinkActivity extends Activity
     public static final String KEY_IP               = "ip";
     public static final String KEY_PORT             = "port";
 
-    private final int OSD_TIMER                     = 5000;//ms
-
-    private final String FB0_BLANK                  = "/sys/class/graphics/fb0/blank";
-    //private final String CLOSE_GRAPHIC_LAYER      = "echo 1 > /sys/class/graphics/fb0/blank";
-    //private final String OPEN_GRAPHIC_LAYER       = "echo 0 > /sys/class/graphics/fb0/blank";
-    //private final String WIFI_DISPLAY_CMD         = "wfd -c";
-    //private static final int MAX_DELAY_MS         = 3000;
-// Miracast cert begin
-    private File mFolder = new File("/data/data/com.amlogic.miracast");
     private String strSessionID = null;
     private String strIP = null;
-// Miracast cert end
-    private final int MSG_CLOSE_OSD             = 2;
-    private String mCueEnable;
-    private String mBypassDynamic;
-    private String mBypassProg;
 
     private String mIP;
     private String mPort;
@@ -119,33 +106,13 @@ public class SinkActivity extends Activity
     private View mRootView;
 
     private SystemControlManager mSystemControl = SystemControlManager.getInstance();
-    //private SystemControlManager mSystemControl = null;
+
     private int certBtnState = 0; // 0: none oper, 1:play, 2:pause
     private static final int CMD_MIRACAST_FINISHVIEW = 1;
     private static final int CMD_MIRACAST_EXIT       = 2;
     private boolean mEnterStandby = false;
-    static
-    {
-        System.loadLibrary ("wfd_jni");
-    }
 
-    private FileObserver mFileObserver = new FileObserver(mFolder.getPath(), FileObserver.MODIFY)
-    {
-        public void onEvent(int event, String path) {
-            Log.d(TAG, "File changed : path=" + path + " event=" + event);
-            if (null == path)
-            {
-                return;
-            }
-
-            if (path.equals(new String("sessionId")))
-            {
-                File ipFile = new File(mFolder, path);
-                String fullName = ipFile.getPath();
-                parseSessionId(fullName);
-            }
-        }
-    };
+    private MediaPlayer mMediaPlayer;
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver()
     {
@@ -192,19 +159,13 @@ public class SinkActivity extends Activity
     public void onCreate (Bundle savedInstanceState)
     {
         super.onCreate (savedInstanceState);
-
-        //no title and no status bar
-
         requestWindowFeature (Window.FEATURE_NO_TITLE);
         getWindow().setFlags (WindowManager.LayoutParams.FLAG_FULLSCREEN,
                               WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView (R.layout.sink);
         this.setVolumeControlStream(AudioManager.STREAM_MUSIC);
         mSurfaceView = (SurfaceView) findViewById (R.id.wifiDisplaySurface);
-
-        //full screen test
         mRootView = (View) findViewById (R.id.rootView);
-
         mSurfaceView.getHolder().addCallback (new SurfaceCallback() );
         mSurfaceView.getHolder().setKeepScreenOn (true);
         mSurfaceView.getHolder().setType (SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
@@ -227,7 +188,6 @@ public class SinkActivity extends Activity
                 catch (InterruptedException e) {}
             }
         }
-        mFileObserver.startWatching();
 
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ON_AFTER_RELEASE, TAG);
@@ -237,7 +197,6 @@ public class SinkActivity extends Activity
         intentFilter.addAction(Intent.ACTION_SCREEN_ON);
         intentFilter.addAction(Intent.ACTION_SCREEN_OFF);
         registerReceiver(mReceiver, intentFilter);
-
 
         mSessionHandler = new Handler() {
         @Override
@@ -260,7 +219,6 @@ public class SinkActivity extends Activity
                     stopMiracast(true);
                     mWakeLock.release();
                     quitLoop();
-                    mFileObserver.stopWatching();
                 break;
                 }
             }
@@ -283,40 +241,6 @@ public class SinkActivity extends Activity
     {
         super.onResume();
         Log.d(TAG, "sink activity onResume");
-    }
-
-    private boolean parseSessionId(String fileName)
-    {
-        File file = new File(fileName);
-        BufferedReader reader = null;
-        String info = new String();
-        try {
-            reader = new BufferedReader(new FileReader(file));
-            info = reader.readLine();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-                if (info == null) {
-                    Log.d (TAG, "parseSessionId info is NULL");
-                    return false;
-                } else {
-                    StringTokenizer strToke = new StringTokenizer(info," ");
-                    strSessionID = strToke.nextToken();
-                    String sourceInfo = "IP address: " + strIP + ",  session Id: " + strSessionID;
-                    Log.e("wpa_supplicant",  sourceInfo);
-                    return true;
-                }
-            }
-            else
-                return false;
-        }
     }
 
     private String getlocalip()
@@ -366,10 +290,8 @@ public class SinkActivity extends Activity
             case KeyEvent.KEYCODE_VOLUME_UP:
             case KeyEvent.KEYCODE_VOLUME_DOWN:
             case KeyEvent.KEYCODE_VOLUME_MUTE:
-                //openOsd();
                 break;
             case KeyEvent.KEYCODE_BACK:
-                //openOsd();
                 return true;
             }
         }
@@ -404,100 +326,8 @@ public class SinkActivity extends Activity
     public void onConfigurationChanged (Configuration config)
     {
         super.onConfigurationChanged(config);
-
-        //Log.d(TAG, "onConfigurationChanged: " + config);
-        /*
-        try {
-        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-        }
-        else if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
-        }
-        }
-        catch (Exception ex) {}
-        */
     }
 
-    private void openOsd()
-    {
-        switchGraphicLayer (true);
-    }
-
-    private void closeOsd()
-    {
-        switchGraphicLayer (false);
-    }
-
-    /**
-     * open or close graphic layer
-     *
-     */
-    public void switchGraphicLayer (boolean open)
-    {
-        //Log.d(TAG, (open?"open":"close") + " graphic layer");
-        writeSysfs (FB0_BLANK, open ? "0" : "1");
-    }
-
-    private int writeSysfs (String path, String val)
-    {
-        if (!new File (path).exists() )
-        {
-            Log.e (TAG, "File not found: " + path);
-            return 1;
-        }
-
-        try
-        {
-            FileWriter fw = new FileWriter(path);
-            BufferedWriter writer = new BufferedWriter (fw, 64);
-            try
-            {
-                writer.write (val);
-            } finally
-            {
-                writer.close();
-                fw.close();
-            }
-            return 0;
-
-        }
-        catch (IOException e)
-        {
-            Log.e (TAG, "IO Exception when write: " + path, e);
-            return 1;
-        }
-    }
-
-    private String readSysfs(String path) {
-        if (!new File(path).exists()) {
-            Log.e(TAG, "File not found: " + path);
-            return null;
-        }
-
-        String str = null;
-        StringBuilder value = new StringBuilder();
-
-        try {
-            FileReader fr = new FileReader(path);
-            BufferedReader br = new BufferedReader(fr);
-            try {
-                while ((str = br.readLine()) != null) {
-                    if (str != null)
-                        value.append(str);
-                }
-                br.close();
-                fr.close();
-                if (value != null)
-                    return value.toString();
-                return null;
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 
     private void exitMiracastDialog()
     {
@@ -511,21 +341,33 @@ public class SinkActivity extends Activity
                        switch (arg1)
                        {
                             case 0:
-                                nativeSetTeardown();
-                                //finishView();
+                                try {
+                                    stopMiracast(true);
+                                    finishView();
+                                }  catch (Exception e) {
+                                    e.printStackTrace();
+                                }
                                 break;
                             case 1:
                                 if (certBtnState == 2)
                                 {
-                                    nativeSetPlay();
-                                    certBtnState = 1;
+                                    try {
+                                        mMediaPlayer.start();
+                                        certBtnState = 1;
+                                    }  catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
                                 }
                                 break;
                             case 2:
                                 if (certBtnState != 2)
                                {
-                                    nativeSetPause();
-                                    certBtnState = 2;
+                                   try {
+                                       mMediaPlayer.pause();
+                                       certBtnState = 2;
+                                   }  catch (Exception e) {
+                                       e.printStackTrace();
+                                   }
                                 }
                                 break;
                             default:
@@ -556,41 +398,22 @@ public class SinkActivity extends Activity
      * client or owner stop miracast
      * client stop miracast, only need open graphic layer
      */
-    public void stopMiracast (boolean owner)
+    public void stopMiracast(boolean owner)
     {
         Log.d (TAG, "stop miracast running:" + mMiracastRunning + ",owner:" + owner);
-
-        if (mMiracastRunning && owner)
-        {
-            mMiracastRunning = false;
-            nativeSetTeardown();
-            nativeDisconnectSink();
-            Log.d(TAG, "stop Miracast and tear down");
-            //Message msg = Message.obtain();
-            //msg.what = CMD_MIRACAST_STOP;
-            //mMiracastThreadHandler.sendMessage(msg);
-        } else if (mMiracastRunning) {
-            mMiracastRunning = false;
-            nativeDisconnectSink();
+        if (mMiracastRunning) {
+            try {
+                Message msg = Message.obtain();
+                msg.what = CMD_MIRACAST_STOP;
+                if (mMiracastHandler != null)
+                    mMiracastHandler.sendMessage(msg);
+                mMiracastRunning = false;
+            }  catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         mIP = null;
         mPort = null;
-    }
-
-    private native void nativeConnectWifiSource (SinkActivity sink, Surface surface, String ip, int port);
-    private native void nativeDisconnectSink();
-    private native void nativeResolutionSettings (boolean isHD);
-    private native void nativeSetPlay();
-    private native void nativeSetPause();
-    private native void nativeSetTeardown();
-    //private native void nativeSourceStart(String ip);
-    //private native void nativeSourceStop();
-    // Native callback.
-    private void notifyWfdError()
-    {
-        Log.d(TAG, "notifyWfdError received!!!");
-        stopMiracast(false);
-        finishView();
     }
 
     private final int CMD_MIRACAST_START      = 10;
@@ -600,30 +423,49 @@ public class SinkActivity extends Activity
         public void run()
         {
             Looper.prepare();
-
             Log.v (TAG, "miracast thread run");
-
             mMiracastHandler = new Handler()
             {
-                public void handleMessage (Message msg)
-                {
-                    switch (msg.what)
-                    {
-                        case CMD_MIRACAST_START:
-                            {
+                public void handleMessage (Message msg)  {
+                    switch (msg.what) {
+                        case CMD_MIRACAST_START: {
+                            try {
                                 Bundle data = msg.getData();
                                 String ip = data.getString(KEY_IP);
                                 String port = data.getString(KEY_PORT);
-                                nativeConnectWifiSource(SinkActivity.this, mSurfaceView.getHolder().getSurface(), ip, Integer.parseInt (port));
-                                nativeResolutionSettings(isHD);
+                                String wfdUrl = "wfd://" + ip + ":" + port;
+                                mMediaPlayer = new MediaPlayer();
+                                mMediaPlayer.setDataSource(wfdUrl);
+                                mMediaPlayer.prepareAsync();
+                                mMediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+                                    public boolean onError(MediaPlayer mp, int what, int extra) {
+                                        Log.e(TAG, "Receive a error mp is" + mp + " what is " + what + " extra is " + extra);
+                                        stopMiracast(true);
+                                        finishView();
+                                        return true;
+                                    }
+                                });
+                                mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                                    public void onPrepared(MediaPlayer mp) {
+                                        mp.start();
+                                        mp.setDisplay(mSurfaceView.getHolder());
+                                    }
+                                });
+                            } catch (Exception e) {
+                                e.printStackTrace();
                             }
                             break;
+                        }
+                        case CMD_MIRACAST_STOP: {
+                            mMediaPlayer.stop();
+                            mMediaPlayer.release();
+                            break;
+                        }
                         default:
                             break;
                     }
                 }
             };
-
             synchronized (this)
             {
                 notifyAll();
@@ -655,8 +497,7 @@ public class SinkActivity extends Activity
         @Override
         public void surfaceCreated (SurfaceHolder holder)
         {
-            // TODO Auto-generated method stub
-            Log.e (TAG, "surfaceCreated mSurfaceView.getHolder().getSurface() is" + mSurfaceView.getHolder().getSurface() + "and holder.getSurface() is %p" + holder.getSurface() + mMiracastRunning + mEnterStandby);
+            Log.v (TAG, "surfaceCreated");
             if (mIP == null) {
                 finishView();
                 return;
@@ -672,26 +513,8 @@ public class SinkActivity extends Activity
         {
             // TODO Auto-generated method stub
             Log.v (TAG, "surfaceDestroyed");
-            if (getAndroidSDKVersion() == 17)
-            {
-                writeSysfs ("/sys/class/graphics/fb0/free_scale", "0");
-                writeSysfs ("/sys/class/graphics/fb0/free_scale", "1");
-            }
             if (mMiracastRunning)
                 stopMiracast(true);
         }
-    }
-
-    private int getAndroidSDKVersion()
-    {
-        int version = 0;
-        try
-        {
-            version = Integer.valueOf (android.os.Build.VERSION.SDK);
-        }
-        catch (NumberFormatException e)
-        {
-        }
-        return version;
     }
 }

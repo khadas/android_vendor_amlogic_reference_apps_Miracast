@@ -18,7 +18,7 @@
  */
 package com.droidlogic.miracast;
 
-
+import android.os.Build;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
@@ -413,7 +413,7 @@ public class WiFiDirectMainActivity extends Activity implements
     }
 
     private void startListen() {
-        manager.listen(channel, true, new ActionListener() {
+        manager.startListening(channel, new ActionListener() {
             @Override
             public void onSuccess() {
                 Log.d(TAG, "start listen peers succeed.");
@@ -427,7 +427,7 @@ public class WiFiDirectMainActivity extends Activity implements
     }
 
     private void stopListen() {
-        manager.listen(channel, false, new ActionListener() {
+        manager.stopListening(channel, new ActionListener() {
             @Override
             public void onSuccess() {
                 Log.d(TAG, "stop listen peers succeed.");
@@ -486,7 +486,7 @@ public class WiFiDirectMainActivity extends Activity implements
         wpsConfig.setup = config;
         wifip2pconfig.wps = wpsConfig;
         wifip2pconfig.deviceAddress = device.deviceAddress;
-        wifip2pconfig.groupOwnerIntent = 15;
+        wifip2pconfig.groupOwnerIntent = 0;
         mStartConnecting = true;
 
         manager.connect(channel, wifip2pconfig, new ActionListener() {
@@ -1049,12 +1049,12 @@ public class WiFiDirectMainActivity extends Activity implements
         freshView();
         for (int i = 0; i < peers.size(); i++)
         {
-            if (!peers.get(i).wfdInfo.isWfdEnabled())
+            if (!peers.get(i).getWfdInfo().isEnabled())
             {
                 Log.d(TAG, "peerDevice:" + peers.get(i).deviceName + " is not a wfd device");
                 continue;
             }
-            if (!peers.get(i).wfdInfo.isSessionAvailable())
+            if (!peers.get(i).getWfdInfo().isSessionAvailable())
             {
                 Log.d(TAG, "peerDevice:" + peers.get(i).deviceName + " is an unavailable wfd session");
                 continue;
@@ -1247,16 +1247,16 @@ public class WiFiDirectMainActivity extends Activity implements
         WifiP2pWfdInfo wfdInfo = new WifiP2pWfdInfo();
 
         if (isSink) {
-            wfdInfo.setWfdEnabled(true);
-            wfdInfo.setDeviceType(WifiP2pWfdInfo.PRIMARY_SINK);
+            wfdInfo.setEnabled(true);
+            wfdInfo.setDeviceType(WifiP2pWfdInfo.DEVICE_TYPE_PRIMARY_SINK);
             wfdInfo.setSessionAvailable(true);
             wfdInfo.setControlPort(7236);
             wfdInfo.setMaxThroughput(50);
         } else {
-            wfdInfo.setWfdEnabled(false);
+            wfdInfo.setEnabled(false);
         }
 
-        manager.setWFDInfo(channel, wfdInfo, new ActionListener() {
+        manager.setWfdInfo(channel, wfdInfo, new ActionListener() {
             @Override
             public void onSuccess() {
                 Log.d(TAG, "Successfully set WFD info.");

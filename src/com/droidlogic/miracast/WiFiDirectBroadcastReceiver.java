@@ -23,6 +23,7 @@ import android.net.NetworkInfo;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pDevice;
+import android.net.wifi.p2p.WifiP2pWfdInfo;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pManager.Channel;
 import android.net.wifi.p2p.WifiP2pManager.PeerListListener;
@@ -70,6 +71,7 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver
     public void onReceive(Context context, Intent intent)
     {
         String action = intent.getAction();
+        WifiP2pWfdInfo wfdInfo = null;
         if (WiFiDirectMainActivity.DEBUG)
         {
             Log.d (WiFiDirectMainActivity.TAG, "onReceive action:" + action);
@@ -139,27 +141,35 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver
                          device = c;
                          break;
                      }
-                     if (device != null && device.wfdInfo != null)
+                     if (device != null)
                      {
-                         mWfdPort = String.valueOf(device.wfdInfo.getControlPort());
-                         mWfdMac = device.deviceAddress;
+                        wfdInfo = device.getWfdInfo();
+                        if (wfdInfo != null) {
+                            mWfdPort = String.valueOf(wfdInfo.getControlPort());
+                            mWfdMac = device.deviceAddress;
+                        }
                      }
                 }
                 else
                 {
                     Log.d (WiFiDirectMainActivity.TAG, "I am GC");
                     WifiP2pDevice device = p2pGroup.getOwner();
-                    if (device != null && device.wfdInfo != null) {
-                        mWfdPort = String.valueOf(device.wfdInfo.getControlPort());
-                        Log.d(WiFiDirectMainActivity.TAG, "mWfdPort:" + mWfdPort);
-                        if (mWfdPort.equals(DEFAULT_PORT))
-                            activity.startMiracast(p2pInfo.groupOwnerAddress.getHostAddress(), mWfdPort);
-                         else {
-                            Log.d(WiFiDirectMainActivity.TAG, "use default port");
-                            activity.startMiracast(p2pInfo.groupOwnerAddress.getHostAddress(), DEFAULT_PORT);
-                         }
+                    if (device != null) {
+                        wfdInfo = device.getWfdInfo();
+                        if (wfdInfo != null) {
+                            mWfdPort = String.valueOf(wfdInfo.getControlPort());
+                            Log.d(WiFiDirectMainActivity.TAG, "mWfdPort:" + mWfdPort);
+                            if (mWfdPort.equals(DEFAULT_PORT))
+                                activity.startMiracast(p2pInfo.groupOwnerAddress.getHostAddress(), mWfdPort);
+                            else {
+                                Log.d(WiFiDirectMainActivity.TAG, "use default port");
+                                activity.startMiracast(p2pInfo.groupOwnerAddress.getHostAddress(), DEFAULT_PORT);
+                            }
+                        } else {
+                            Log.d(WiFiDirectMainActivity.TAG, "wfdInfo is null");
+                        }
                     } else {
-                        Log.d(WiFiDirectMainActivity.TAG, "device or device wfdInfo is null");
+                        Log.d(WiFiDirectMainActivity.TAG, "device is null");
                     }
                 }
                 mSinkIsConnected = false;
