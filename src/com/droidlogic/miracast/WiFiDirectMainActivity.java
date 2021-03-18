@@ -682,8 +682,8 @@ public class WiFiDirectMainActivity extends Activity implements
     };
 
     public void startSearchTimer() {
-        if (DEBUG) Log.d(TAG, " startSearchTimer 6s");
-            mHandler.postDelayed(startSearchRunnable, 6000);
+        if (DEBUG) Log.d(TAG, " startSearchTimer 15s");
+            mHandler.postDelayed(startSearchRunnable, 15000);
     }
 
     public void cancelSearchTimer(){

@@ -270,8 +270,8 @@ public class SinkActivity extends Activity
     public void onPause()
     {
         super.onPause();
-        Log.d(TAG, " start sink activity onPause");
-        if (mIP != null) {
+
+        if (mSessionHandler != null) {
             Message msg = Message.obtain();
             msg.what = CMD_MIRACAST_EXIT;
             mSessionHandler.sendMessage(msg);

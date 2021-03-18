@@ -32,6 +32,9 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.net.InetAddress;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 
 /**
  * A BroadcastReceiver that notifies of important wifi p2p events.
@@ -40,12 +43,14 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver
 {
     private String mWfdMac;
     private String mWfdPort;
+    private String mPeerValidAddress;
     private boolean mWfdIsConnected = false;
     private boolean mSinkIsConnected = false;
     private WifiP2pManager manager;
     private Channel channel;
     private WiFiDirectMainActivity activity;
     private final String DEFAULT_PORT = "7236";
+    private boolean mPeerValid = false;
 
     Object lock = new Object();
     /**
@@ -134,21 +139,83 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver
                 mWfdIsConnected = true;
                 if (p2pGroup.isGroupOwner() == true)
                 {
-                     Log.d (WiFiDirectMainActivity.TAG, "I am GO");
-                     WifiP2pDevice device = null;
-                     for (WifiP2pDevice c : p2pGroup.getClientList())
-                     {
-                         device = c;
-                         break;
-                     }
-                     if (device != null)
-                     {
+                    if (mPeerValid)
+                        return;
+                    Log.d (WiFiDirectMainActivity.TAG, "I am GO");
+                    WifiP2pDevice device = null;
+                    for (WifiP2pDevice c : p2pGroup.getClientList()) {
+                        device = c;
+                        break;
+                    }
+                    if (device != null)
+                    {
                         wfdInfo = device.getWfdInfo();
                         if (wfdInfo != null) {
                             mWfdPort = String.valueOf(wfdInfo.getControlPort());
                             mWfdMac = device.deviceAddress;
                         }
-                     }
+                        Thread subThead = new Thread() {
+                            public void run() {
+                                try {
+                                    String INETADDRESS_CLASS_NAME = "java.net.InetAddress";
+                                    Class inetAddressClass = Class.forName(INETADDRESS_CLASS_NAME);
+                                    Method meths[] = inetAddressClass.getMethods();
+                                    Method isReachableByICMP = null;
+                                    for (int i = 0; i < meths.length; i++) {
+                                        if (meths[i].getName().endsWith("isReachableByICMP")) {
+                                            isReachableByICMP = meths[i];
+                                            break;
+                                        }
+                                    }
+                                    String goHost = p2pInfo.groupOwnerAddress.getHostAddress();
+                                    StringBuilder hostBuilder = new StringBuilder(goHost.substring(0, goHost.lastIndexOf(".") + 1));
+                                    int owner = Integer.parseInt(goHost.substring(goHost.lastIndexOf(".") + 1));
+                                    for (int i = 80; i <= 150; i++) {
+                                        if (i == owner)
+                                            continue;
+                                        mPeerValidAddress = hostBuilder.replace(goHost.lastIndexOf(".") + 1, hostBuilder.length(), String.valueOf(i)).toString();
+                                        mPeerValid = Boolean.parseBoolean(isReachableByICMP.invoke(InetAddress.getByName(mPeerValidAddress), 200).toString());
+                                        if (mPeerValid)
+                                            break;
+                                    }
+                                    if (mPeerValid == false) {
+                                        for (int i = 151; i <= 254; i++) {
+                                            if (i == owner)
+                                                continue;
+                                            mPeerValidAddress = hostBuilder.replace(goHost.lastIndexOf(".") + 1, hostBuilder.length(), String.valueOf(i)).toString();
+                                            mPeerValid = Boolean.parseBoolean(isReachableByICMP.invoke(InetAddress.getByName(mPeerValidAddress), 100).toString());
+                                            if (mPeerValid)
+                                                break;
+                                        }
+                                    }
+                                    if (mPeerValid == false) {
+                                        for (int i = 1; i <= 79; i++) {
+                                            if (i == owner)
+                                                continue;
+                                            mPeerValidAddress = hostBuilder.replace(goHost.lastIndexOf(".") + 1, hostBuilder.length(), String.valueOf(i)).toString();
+                                            mPeerValid = Boolean.parseBoolean(isReachableByICMP.invoke(InetAddress.getByName(mPeerValidAddress), 100).toString());
+                                            if (mPeerValid)
+                                                break;
+                                        }
+                                    }
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        };
+                        subThead.start();
+                        try {
+                            subThead.join();
+                            if (mPeerValid) {
+                                Log.d(WiFiDirectMainActivity.TAG, "mWfdPort:" + mWfdPort + " host is " + mPeerValidAddress);
+                                activity.startMiracast(mPeerValidAddress, mWfdPort);
+                            } else {
+                                Log.d(WiFiDirectMainActivity.TAG, "not found peer information");
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
                 else
                 {
@@ -176,6 +243,7 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver
             }
             else
             {
+                mPeerValid = false;
                 mWfdIsConnected = false;
                 // It's a disconnect
                 activity.resetData();
