@@ -547,6 +547,12 @@ public class WiFiDirectMainActivity extends Activity implements
     public void onResume()
     {
         Log.d(TAG, "onResume====>");
+        if (mReceiver != null) {
+            registerReceiver(mReceiver, intentFilter);
+            Log.d(TAG, "register p2p Receiver success!");
+        }
+        changeRole(true);
+
         Log.d(TAG, "removeGroup...");
         super.onResume();
         manager.removeGroup(channel, new WifiP2pManager.ActionListener() {
@@ -654,7 +660,6 @@ public class WiFiDirectMainActivity extends Activity implements
             setCertComponentVisible(false);
         else
             setCertComponentVisible(true);
-        registerReceiver(mReceiver, intentFilter);
         tryDiscoverPeers();
     }
 
@@ -790,7 +795,11 @@ public class WiFiDirectMainActivity extends Activity implements
     {
         Log.d(TAG, "onPause====>");
         super.onPause();
-        unregisterReceiver(mReceiver);
+        changeRole(false);
+        super.onPause();
+        if (mReceiver != null) {
+            unregisterReceiver(mReceiver);
+        }
         mWakeLock.release();
         stopPeerDiscovery();
     }
@@ -1002,7 +1011,6 @@ public class WiFiDirectMainActivity extends Activity implements
         mReceiver = new WiFiDirectBroadcastReceiver (manager, channel, this);
         mPref = PreferenceManager.getDefaultSharedPreferences (this);
         mEditor = mPref.edit();
-        changeRole(true);
     }
 
     @Override
