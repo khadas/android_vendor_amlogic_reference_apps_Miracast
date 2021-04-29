@@ -39,8 +39,9 @@ import java.lang.reflect.Type;
 /**
  * A BroadcastReceiver that notifies of important wifi p2p events.
  */
-public class WiFiDirectBroadcastReceiver extends BroadcastReceiver
-{
+public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
+    private static final String TAG    = "aml" + WiFiDirectBroadcastReceiver.class.getSimpleName();
+    private static final boolean DEBUG = true;
     private String mWfdMac;
     private String mWfdPort;
     private String mPeerValidAddress;
@@ -53,14 +54,14 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver
     private boolean mPeerValid = false;
 
     Object lock = new Object();
+
     /**
      * @param manager WifiP2pManager system service
      * @param channel Wifi p2p channel
      * @param activity activity associated with the receiver
      */
-    public WiFiDirectBroadcastReceiver (WifiP2pManager manager, Channel channel,
-                                        WiFiDirectMainActivity activity)
-    {
+    public WiFiDirectBroadcastReceiver(WifiP2pManager manager, Channel channel,
+                                       WiFiDirectMainActivity activity) {
         super();
         this.manager = manager;
         this.channel = channel;
@@ -73,82 +74,70 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver
      * android.content.Intent)
      */
     @Override
-    public void onReceive(Context context, Intent intent)
-    {
+    public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
         WifiP2pWfdInfo wfdInfo = null;
-        if (WiFiDirectMainActivity.DEBUG)
-        {
-            Log.d (WiFiDirectMainActivity.TAG, "onReceive action:" + action);
+        if (DEBUG) {
+            Log.d(TAG, "onReceive action:" + action);
         }
-        if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals (action) )
-        {
+        if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
+            // onReceive action:android.net.wifi.p2p.STATE_CHANGED
+
             // UI update to indicate wifi p2p status.
-            int state = intent.getIntExtra (WifiP2pManager.EXTRA_WIFI_STATE, -1);
-            if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED)
-            {
+            int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
+            if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
                 // Wifi Direct mode is enabled
-                activity.setIsWifiP2pEnabled (true);
-            }
-            else
-            {
-                activity.setIsWifiP2pEnabled (false);
+                activity.setIsWifiP2pEnabled(true);
+            } else {
+                activity.setIsWifiP2pEnabled(false);
                 activity.resetData();
 
             }
-            if (WiFiDirectMainActivity.DEBUG)
-            {
-                Log.d (WiFiDirectMainActivity.TAG, "P2P state changed - " + state);
+            if (DEBUG) {
+                Log.d(TAG, "P2P state changed - " + state);
             }
-        }
-        else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals (action) )
-        {
+        } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
+            // onReceive action:android.net.wifi.p2p.PEERS_CHANGED
+
             // request available peers from the wifi p2p manager. This is an
             // asynchronous call and the calling activity is notified with a
             // callback on PeerListListener.onPeersAvailable()
             if (manager != null && !activity.mForceStopScan && !activity.mStartConnecting) {
-                Log.d(WiFiDirectMainActivity.TAG, "requestPeers!!!!");
-                manager.requestPeers (channel, (PeerListListener) activity);
+                Log.d(TAG, "requestPeers!!!!");
+                manager.requestPeers(channel, (PeerListListener) activity);
             }
-            if (WiFiDirectMainActivity.DEBUG)
-            {
-                Log.d (WiFiDirectMainActivity.TAG, "P2P peers changed");
+            if (DEBUG) {
+                Log.d(TAG, "P2P peers changed");
             }
-        }
-        else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals (action) )
-        {
-            if (manager == null)
-            {
+        } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
+            // onReceive action:android.net.wifi.p2p.CONNECTION_STATE_CHANGE
+            if (manager == null) {
                 return;
             }
             NetworkInfo networkInfo = (NetworkInfo) intent
-                                      .getParcelableExtra (WifiP2pManager.EXTRA_NETWORK_INFO);
-            WifiP2pInfo p2pInfo = (WifiP2pInfo) intent.getParcelableExtra (WifiP2pManager.EXTRA_WIFI_P2P_INFO);
-            WifiP2pGroup p2pGroup = (WifiP2pGroup) intent.getParcelableExtra (WifiP2pManager.EXTRA_WIFI_P2P_GROUP);
-            if (WiFiDirectMainActivity.DEBUG)
-            {
-                Log.d (WiFiDirectMainActivity.TAG, "===================");
-                Log.d (WiFiDirectMainActivity.TAG, "Received WIFI_P2P_CONNECTION_CHANGED_ACTION, isConnected:" + networkInfo.isConnected() );
-                Log.d (WiFiDirectMainActivity.TAG, "networkInfo=" + networkInfo);
-                Log.d (WiFiDirectMainActivity.TAG, "p2pInfo=" + p2pInfo);
-                Log.d (WiFiDirectMainActivity.TAG, "p2pGroup=" + p2pGroup);
-                Log.d (WiFiDirectMainActivity.TAG, "===================");
+                    .getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
+            WifiP2pInfo p2pInfo = (WifiP2pInfo) intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO);
+            WifiP2pGroup p2pGroup = (WifiP2pGroup) intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_GROUP);
+            if (DEBUG) {
+                Log.d(TAG, "======== start ===========");
+                Log.d(TAG, "Received WIFI_P2P_CONNECTION_CHANGED_ACTION, isConnected:" + networkInfo.isConnected());
+                Log.d(TAG, "networkInfo=" + networkInfo);
+                Log.d(TAG, "p2pInfo=" + p2pInfo);
+                Log.d(TAG, "p2pGroup=" + p2pGroup);
+                Log.d(TAG, "======== end =============");
             }
-            if (networkInfo.isConnected())
-            {
+            if (networkInfo.isConnected()) {
                 mWfdIsConnected = true;
-                if (p2pGroup.isGroupOwner() == true)
-                {
+                if (p2pGroup.isGroupOwner() == true) {
                     if (mPeerValid)
                         return;
-                    Log.d (WiFiDirectMainActivity.TAG, "I am GO");
+                    Log.d(TAG, "I am GO");
                     WifiP2pDevice device = null;
                     for (WifiP2pDevice c : p2pGroup.getClientList()) {
                         device = c;
                         break;
                     }
-                    if (device != null)
-                    {
+                    if (device != null) {
                         wfdInfo = device.getWfdInfo();
                         if (wfdInfo != null) {
                             mWfdPort = String.valueOf(wfdInfo.getControlPort());
@@ -207,93 +196,85 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver
                         try {
                             subThead.join();
                             if (mPeerValid) {
-                                Log.d(WiFiDirectMainActivity.TAG, "mWfdPort:" + mWfdPort + " host is " + mPeerValidAddress);
+                                Log.d(TAG, "mWfdPort:" + mWfdPort + " host is " + mPeerValidAddress);
                                 activity.startMiracast(mPeerValidAddress, mWfdPort);
                             } else {
-                                Log.d(WiFiDirectMainActivity.TAG, "not found peer information");
+                                Log.d(TAG, "not found peer information");
                             }
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
                     }
-                }
-                else
-                {
-                    Log.d (WiFiDirectMainActivity.TAG, "I am GC");
+                } else {
+                    Log.d(TAG, "I am GC");
                     WifiP2pDevice device = p2pGroup.getOwner();
                     if (device != null) {
                         wfdInfo = device.getWfdInfo();
                         if (wfdInfo != null) {
                             mWfdPort = String.valueOf(wfdInfo.getControlPort());
-                            Log.d(WiFiDirectMainActivity.TAG, "mWfdPort:" + mWfdPort);
+                            Log.d(TAG, "mWfdPort:" + mWfdPort);
                             if (mWfdPort.equals(DEFAULT_PORT))
                                 activity.startMiracast(p2pInfo.groupOwnerAddress.getHostAddress(), mWfdPort);
                             else {
-                                Log.d(WiFiDirectMainActivity.TAG, "use default port");
+                                Log.d(TAG, "use default port");
                                 activity.startMiracast(p2pInfo.groupOwnerAddress.getHostAddress(), DEFAULT_PORT);
                             }
                         } else {
-                            Log.d(WiFiDirectMainActivity.TAG, "wfdInfo is null");
+                            Log.d(TAG, "wfdInfo is null");
                         }
                     } else {
-                        Log.d(WiFiDirectMainActivity.TAG, "device is null");
+                        Log.d(TAG, "device is null");
                     }
                 }
                 mSinkIsConnected = false;
-            }
-            else
-            {
+            } else {
                 mPeerValid = false;
                 mWfdIsConnected = false;
                 // It's a disconnect
                 activity.resetData();
                 //activity.stopMiracast(false);
                 //start a search when we are disconnected
-                Log.d (WiFiDirectMainActivity.TAG, "ForceStopScan=" + activity.mForceStopScan);
+                Log.d(TAG, "ForceStopScan=" + activity.mForceStopScan);
                 if (!activity.mForceStopScan)
                     activity.startSearch();
             }
-        }
-        else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals (action) )
-        {
+        } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
+            // onReceive action:android.net.wifi.p2p.THIS_DEVICE_CHANGED
+            if (DEBUG) {
+                Log.d(TAG, "Receive: WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION");
+            }
 
-            if (WiFiDirectMainActivity.DEBUG)
-            {
-                Log.d (WiFiDirectMainActivity.TAG, "WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION");
-            }
             activity.resetData();
-            activity.setDevice( (WifiP2pDevice) intent.getParcelableExtra (
-                                     WifiP2pManager.EXTRA_WIFI_P2P_DEVICE) );
-        }
-        else if (WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION.equals (action) )
-        {
-            int discoveryState = intent.getIntExtra (WifiP2pManager.EXTRA_DISCOVERY_STATE,
-                                 WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED);
-            if ( activity != null && discoveryState == WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED)
-            {
+            activity.setDevice((WifiP2pDevice) intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE));
+        } else if (WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION.equals(action)) {
+            // onReceive action:android.net.wifi.p2p.DISCOVERY_STATE_CHANGE
+
+            int discoveryState = intent.getIntExtra(WifiP2pManager.EXTRA_DISCOVERY_STATE,
+                    WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED);
+            if (activity != null && discoveryState == WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED) {
                 activity.discoveryStop();
-                if (!activity.mForceStopScan && !activity.mStartConnecting)
+                if (!activity.mForceStopScan && !activity.mStartConnecting) {
                     activity.startSearchTimer();
+                }
             }
-            if (WiFiDirectMainActivity.DEBUG)
-            {
-                Log.d (WiFiDirectMainActivity.TAG, "Discovery state changed: " + discoveryState + " ->1:stop, 2:start");
+            if (DEBUG) {
+                Log.d(TAG, "Discovery state changed: " + discoveryState + " (1:stop, 2:start)");
             }
-        }
-        else if (WiFiDirectMainActivity.WIFI_P2P_IP_ADDR_CHANGED_ACTION.equals (action) )
-        {
+        } else if (WiFiDirectMainActivity.WIFI_P2P_IP_ADDR_CHANGED_ACTION.equals(action)) {
+            // onReceive action:android.net.wifi.p2p.IPADDR_INFORMATION
+
             String ipaddr = intent.getStringExtra(WiFiDirectMainActivity.WIFI_P2P_PEER_IP_EXTRA);
-            String macaddr = intent.getStringExtra(WiFiDirectMainActivity.WIFI_P2P_PEER_MAC_EXTRA);;
-            Log.d (WiFiDirectMainActivity.TAG, "ipaddr is " + ipaddr + "  macaddr is " + macaddr);
+            String macaddr = intent.getStringExtra(WiFiDirectMainActivity.WIFI_P2P_PEER_MAC_EXTRA);
+            Log.d(TAG, "ipaddr is " + ipaddr + "  macaddr is " + macaddr);
             if (ipaddr != null && macaddr != null) {
                 if (mWfdIsConnected) {
                     if (!mSinkIsConnected) {
                         if ((mWfdMac.substring(0, 11)).equals(macaddr.substring(0, 11))) {
-                            Log.d (WiFiDirectMainActivity.TAG, "wfdMac:" + mWfdMac + ", macaddr:" + macaddr + " is mate!!");
+                            Log.d(TAG, "wfdMac:" + mWfdMac + ", macaddr:" + macaddr + " is mate!!");
                             activity.startMiracast(ipaddr, mWfdPort);
                             mSinkIsConnected = true;
                         } else {
-                            Log.d (WiFiDirectMainActivity.TAG, "wfdMac:" + mWfdMac + ", macaddr:" + macaddr + " is unmate!!");
+                            Log.d(TAG, "wfdMac:" + mWfdMac + ", macaddr:" + macaddr + " is unmate!!");
                         }
                     }
                 }
