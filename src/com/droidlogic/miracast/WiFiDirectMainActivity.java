@@ -1091,8 +1091,10 @@ public class WiFiDirectMainActivity extends Activity implements
     }
 
     public void setConnect() {
-        mConnectDesc.setText(getString(R.string.connected_info));
-        mConnectStatus.setBackgroundResource(R.drawable.wifi_yes);
+        runOnUiThread(()->{
+            mConnectDesc.setText(getString(R.string.connected_info));
+            mConnectStatus.setBackgroundResource(R.drawable.wifi_yes);
+        });
     }
 
     public void setIsWifiP2pEnabled(boolean enable) {
