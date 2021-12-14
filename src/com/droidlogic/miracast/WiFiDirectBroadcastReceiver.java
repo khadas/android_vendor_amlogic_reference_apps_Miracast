@@ -29,22 +29,16 @@ import android.net.wifi.p2p.WifiP2pManager.Channel;
 import android.net.wifi.p2p.WifiP2pManager.PeerListListener;
 import android.net.wifi.p2p.WifiP2pManager.GroupInfoListener;
 import android.util.Log;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.net.InetAddress;
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
+import com.droidlogic.miracast.utils.ArpTableAnalytical;
 
 /**
  * A BroadcastReceiver that notifies of important wifi p2p events.
  */
 public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
-    private static final String TAG    = "aml" + WiFiDirectBroadcastReceiver.class.getSimpleName();
+    private static final String TAG = "aml" + WiFiDirectBroadcastReceiver.class.getSimpleName();
     private static final boolean DEBUG = true;
     private String mWfdMac;
     private String mWfdPort;
-    private String mPeerValidAddress;
     private boolean mWfdIsConnected = false;
     private boolean mSinkIsConnected = false;
     private WifiP2pManager manager;
@@ -57,8 +51,8 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
     Object lock = new Object();
 
     /**
-     * @param manager WifiP2pManager system service
-     * @param channel Wifi p2p channel
+     * @param manager  WifiP2pManager system service
+     * @param channel  Wifi p2p channel
      * @param activity activity associated with the receiver
      */
     public WiFiDirectBroadcastReceiver(WifiP2pManager manager, Channel channel,
@@ -144,49 +138,22 @@ public class WiFiDirectBroadcastReceiver extends BroadcastReceiver {
                             mWfdPort = String.valueOf(wfdInfo.getControlPort());
                             mWfdMac = device.deviceAddress;
                         }
-                        Thread subThead = new Thread() {
-                            public void run() {
-                                try {
-                                    String INETADDRESS_CLASS_NAME = "java.net.InetAddress";
-                                    Class inetAddressClass = Class.forName(INETADDRESS_CLASS_NAME);
-                                    Method meths[] = inetAddressClass.getMethods();
-                                    Method isReachableByICMP = null;
-                                    for (int i = 0; i < meths.length; i++) {
-                                        if (meths[i].getName().endsWith("isReachableByICMP")) {
-                                            isReachableByICMP = meths[i];
-                                            break;
-                                        }
-                                    }
-                                    String goHost = p2pInfo.groupOwnerAddress.getHostAddress();
-                                    StringBuilder hostBuilder = new StringBuilder(goHost.substring(0, goHost.lastIndexOf(".") + 1));
-                                    int owner = Integer.parseInt(goHost.substring(goHost.lastIndexOf(".") + 1));
-                                    for (int i = 1; i <= gateway_addr - 1; i++) {
-                                        if (i == owner) {
-                                            continue;
-                                        }
-                                        mPeerValidAddress = hostBuilder.replace(goHost.lastIndexOf(".") + 1, hostBuilder.length(), String.valueOf(i)).toString();
-                                        mPeerValid = Boolean.parseBoolean(isReachableByICMP.invoke(InetAddress.getByName(mPeerValidAddress), 200).toString());
-                                        if (mPeerValid) {
-                                            break;
-                                        }
+
+                        Log.d(TAG, "mWfdMac= " + mWfdMac + ", p2pGroup.getInterface= " + p2pGroup.getInterface());
+
+                        ArpTableAnalytical.getMatchedIp(mWfdMac, p2pGroup.getInterface(),
+                                new ArpTableAnalytical.ArpTableMatchListener() {
+                                    @Override
+                                    public void onMatched(String peerIp) {
+                                        Log.d(TAG, "getMatchedIp, onMatched, peerIp= " + peerIp);
+                                        activity.startMiracast(peerIp, mWfdPort);
                                     }
 
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                                try {
-                                    if (mPeerValid) {
-                                        Log.d(TAG, "mWfdPort:" + mWfdPort + " host is " + mPeerValidAddress);
-                                        activity.startMiracast(mPeerValidAddress, mWfdPort);
-                                    } else {
-                                        Log.d(TAG, "not found peer information");
+                                    @Override
+                                    public void onNotMatched() {
+                                        Log.d(TAG, "getMatchedIp, onNotMatched");
                                     }
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        };
-                        subThead.start();
+                                });
                     }
                 } else {
                     Log.d(TAG, "I am GC");
