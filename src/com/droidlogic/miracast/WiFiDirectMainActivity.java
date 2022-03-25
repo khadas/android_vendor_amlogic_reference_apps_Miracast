@@ -996,12 +996,7 @@ public class WiFiDirectMainActivity extends Activity implements
             @Override
             public void onFailure(int reason) {
                 Log.d(TAG, "Failed to set WFD info with reason " + reason + ".");
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                WiFiDirectMainActivity.this.changeRole(true);
+                mHandler.postDelayed(()->{WiFiDirectMainActivity.this.changeRole(true);}, 500);
             }
         });
     }
