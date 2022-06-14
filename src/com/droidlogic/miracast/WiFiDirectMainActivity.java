@@ -336,7 +336,6 @@ public class WiFiDirectMainActivity extends Activity implements
             mConnectWarn.setText(WiFiDirectMainActivity.this.getResources()
                     .getString(R.string.p2p_off_warning));
             mConnectWarn.setVisibility(View.VISIBLE);
-            mClick2Settings.setVisibility(View.VISIBLE);
             mConnectDesc.setFocusable(false);
         }
         mDeviceNameShow = (TextView) findViewById(R.id.device_dec);
@@ -1105,7 +1104,6 @@ public class WiFiDirectMainActivity extends Activity implements
             mConnectWarn.setText(WiFiDirectMainActivity.this.getResources()
                     .getString(R.string.p2p_off_warning));
             mConnectWarn.setVisibility(View.VISIBLE);
-            mClick2Settings.setVisibility(View.VISIBLE);
             mConnectDesc.setFocusable(true);
         }
     }
@@ -1181,7 +1179,6 @@ public class WiFiDirectMainActivity extends Activity implements
                 mConnectWarn.setVisibility(View.VISIBLE);
                 mConnectWarn.setText(WiFiDirectMainActivity.this.getResources()
                         .getString(R.string.p2p_off_warning));
-                mClick2Settings.setVisibility(View.VISIBLE);
                 mConnectDesc.setFocusable(false);
             }
             return;
