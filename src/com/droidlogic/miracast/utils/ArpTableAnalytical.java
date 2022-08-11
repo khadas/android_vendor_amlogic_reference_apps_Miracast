@@ -49,12 +49,12 @@ public class ArpTableAnalytical {
         try {
             reader = new BufferedReader(new FileReader(ARP_TABLE_PATH));
             String line = reader.readLine();
-            Log.e(TAG, "!!!! reader; line=" + line);
+            Log.d(TAG, "!!!! reader; line=" + line);
 
             while (true) {
                 line = reader.readLine();
                 if (line != null) {
-                    Log.e(TAG, "enter reader; line=" + line);
+                    Log.d(TAG, "enter reader; line=" + line);
                     String[] tokens = line.split("[ ]+");
                     if (tokens.length < 6) {
                         continue;
@@ -63,10 +63,9 @@ public class ArpTableAnalytical {
                     String ip = tokens[0];
                     String mac = tokens[3];
                     String device = tokens[5];
-                    Log.e(TAG, "enter reader ip= " + tokens[0] + " mac = " + tokens[3]);
-                    if ((macAddress.equals(mac) || !INVALID_MAC.equals(mac))
-                            && deviceType.equals(device)) {
-                        Log.e(TAG, "enter macAddress.equals");
+                    Log.d(TAG, "enter reader ip= " + tokens[0] + " mac = " + tokens[3]);
+                    if (!INVALID_MAC.equals(mac) && deviceType.equals(device)) {
+                        Log.d(TAG, "enter macAddress.equals");
                         l.onMatched(ip);
                         isMatched = true;
                         break;
