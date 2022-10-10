@@ -16,7 +16,8 @@ android_app {
     name: "Miracast",
 
     srcs: ["src/**/*.java"],
-    libs: ["droidlogic"],
+    libs: ["droidlogic.software.core"],
+    uses_libs: ["droidlogic.software.core"],
 
     certificate: "platform",
 
