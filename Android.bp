@@ -12,6 +12,18 @@
 // limitations under the License.
 //
 
+package {
+    default_applicable_licenses: ["vendor_amlogic_miracast_license"],
+}
+
+license {
+    name: "vendor_amlogic_miracast_license",
+    visibility: [":__subpackages__"],
+    license_kinds: [
+        "SPDX-license-identifier-Apache-2.0",
+    ],
+}
+
 android_app {
     name: "Miracast",
 
