@@ -248,7 +248,7 @@ public class WiFiDirectMainActivity extends Activity implements
         Log.d(TAG, "onResume====>");
         Log.d(TAG, "removeGroup...");
         if (mReceiver != null) {
-            registerReceiver(mReceiver, intentFilter);
+            registerReceiver(mReceiver, intentFilter, Context.RECEIVER_EXPORTED);
             Log.d(TAG, "register p2p Receiver success!");
         }
 
