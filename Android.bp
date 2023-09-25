@@ -45,5 +45,5 @@ android_app {
     },
 
     sdk_version: "system_current",
-    vendor: true,
+    product_specific: true,
 }
